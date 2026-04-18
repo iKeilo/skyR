@@ -1,3 +1,5 @@
+# 大版本更新迭代，更改框架，由原先autoxjs改为Kotlin重写，APP整体稳定性提高，缩小体积，同时拥有更好的UI表现
+新项目——>[skyRv2](https://github.com/iKeilo/skyRv2)
 # skyAoutR
 源项目：[光遇自动弹琴脚本](https://github.com/Liang2uv/sky)
 
