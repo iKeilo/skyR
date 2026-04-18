@@ -10,13 +10,17 @@ object PlaybackController {
         fun onStateChanged(state: String)
         fun onPlaybackFinished()
         fun onPlaybackStarted()
+        fun onPlaybackPaused()
+        fun onPlaybackResumed()
     }
 
     private val main = Handler(Looper.getMainLooper())
+    private val lock = Any()
 
     @Volatile private var worker: Thread? = null
     @Volatile private var paused = false
     @Volatile private var stopped = true
+    @Volatile private var generation = 0
 
     var listener: Listener? = null
     var song: Song? = null
@@ -33,7 +37,17 @@ object PlaybackController {
         val currentSong = song ?: return notify("请先选择乐谱")
         if (keyPoints.size != 15) return notify("请先定位琴键")
         val service = SkyAccessibilityService.activeService ?: return notify("无障碍服务未启动")
-        if (worker?.isAlive == true) return
+        synchronized(lock) {
+            if (worker?.isAlive == true && !paused) {
+                notify("正在演奏")
+                return
+            }
+            if (worker?.isAlive == true && paused) {
+                stopInternal(notifyUser = false, callbackFinished = false)
+            }
+            generation += 1
+        }
+        val runGeneration = generation
 
         stopped = false
         paused = false
@@ -45,11 +59,12 @@ object PlaybackController {
         worker = Thread {
             try {
                 for (event in currentSong.events) {
-                    if (stopped) break
-                    waitIfPaused()
+                    if (shouldStop(runGeneration)) break
+                    waitIfPaused(runGeneration)
                     if (event.delayMs > 0L) {
-                        sleepScaled(event.delayMs)
+                        sleepScaled(event.delayMs, runGeneration)
                     }
+                    if (shouldStop(runGeneration)) break
                     if (event.keys.isNotEmpty()) {
                         val points = event.keys.mapNotNull { keyPoints.getOrNull(it) }
                         if (!service.tap(points)) {
@@ -57,12 +72,18 @@ object PlaybackController {
                         }
                     }
                 }
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
             } finally {
-                stopped = true
-                paused = false
-                main.post {
-                    listener?.onPlaybackFinished()
-                    listener?.onStateChanged("演奏结束")
+                val isCurrent = generation == runGeneration
+                if (isCurrent) {
+                    stopped = true
+                    paused = false
+                    worker = null
+                    main.post {
+                        listener?.onPlaybackFinished()
+                        listener?.onStateChanged("演奏结束")
+                    }
                 }
             }
         }.apply {
@@ -74,31 +95,62 @@ object PlaybackController {
     fun pauseOrResume() {
         if (worker?.isAlive != true) return
         paused = !paused
-        notify(if (paused) "已暂停" else "继续演奏")
+        main.post {
+            if (paused) {
+                listener?.onPlaybackPaused()
+                listener?.onStateChanged("已暂停")
+            } else {
+                listener?.onPlaybackResumed()
+                listener?.onStateChanged("继续演奏")
+            }
+        }
     }
 
+    fun stopCurrent() {
+        stopInternal(notifyUser = true, callbackFinished = true)
+    }
+
+    private fun stopInternal(notifyUser: Boolean, callbackFinished: Boolean) {
+        val oldWorker = synchronized(lock) {
+            generation += 1
+            stopped = true
+            paused = false
+            val current = worker
+            worker = null
+            current
+        }
+        oldWorker?.interrupt()
+        if (callbackFinished) {
+            main.post { listener?.onPlaybackFinished() }
+        }
+        if (notifyUser) {
+            notify("已结束")
+        }
+    }
+
+    @Deprecated("Use stopCurrent().")
     fun stop() {
-        stopped = true
-        paused = false
-        worker?.interrupt()
-        worker = null
-        notify("已停止")
+        stopCurrent()
     }
 
-    private fun waitIfPaused() {
-        while (paused && !stopped) {
+    private fun waitIfPaused(runGeneration: Int) {
+        while (paused && !shouldStop(runGeneration)) {
             Thread.sleep(50L)
         }
     }
 
-    private fun sleepScaled(delayMs: Long) {
+    private fun sleepScaled(delayMs: Long, runGeneration: Int) {
         var remaining = (delayMs * (1.0 / speed)).roundToLong().coerceAtLeast(0L)
-        while (remaining > 0L && !stopped) {
-            waitIfPaused()
+        while (remaining > 0L && !shouldStop(runGeneration)) {
+            waitIfPaused(runGeneration)
             val chunk = minOf(remaining, 40L)
             Thread.sleep(chunk)
             remaining -= chunk
         }
+    }
+
+    private fun shouldStop(runGeneration: Int): Boolean {
+        return stopped || generation != runGeneration
     }
 
     private fun notify(message: String) {

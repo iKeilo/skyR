@@ -20,7 +20,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        overlayController = OverlayController(applicationContext)
+        overlayController = OverlayController(this, ::pickSong)
         setContentView(createContent())
         updateStatus()
     }
@@ -78,6 +78,7 @@ class MainActivity : Activity() {
             val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Untitled.txt"
             val song = MusicParser.parse(fileName, MusicParser.decode(bytes))
             PlaybackController.song = song
+            overlayController.onSongSelected(song)
             Toast.makeText(this, "已读取乐谱: ${song.name}", Toast.LENGTH_SHORT).show()
             updateStatus()
         } catch (error: Exception) {

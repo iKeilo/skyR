@@ -18,7 +18,10 @@ import android.widget.Toast
 import kotlin.math.roundToInt
 
 @SuppressLint("SetTextI18n")
-class OverlayController(private val context: Context) : PlaybackController.Listener {
+class OverlayController(
+    private val context: Context,
+    private val onPickSong: () -> Unit
+) : PlaybackController.Listener {
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val positionStore = PositionStore(context)
     private var controls: View? = null
@@ -27,6 +30,7 @@ class OverlayController(private val context: Context) : PlaybackController.Liste
     private var positionParams: WindowManager.LayoutParams? = null
     private var pauseButton: Button? = null
     private var positionButton: Button? = null
+    private var songLabel: TextView? = null
     private val speeds = listOf(0.4, 0.6, 0.8, 1.0, 1.5, 2.0)
     private var speedIndex = 3
 
@@ -47,11 +51,19 @@ class OverlayController(private val context: Context) : PlaybackController.Liste
             setBackgroundColor(Color.argb(210, 0, 0, 0))
             setPadding(10, 10, 10, 10)
         }
-        val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        songLabel = TextView(context).apply {
+            text = "乐谱: ${PlaybackController.song?.name ?: "未选择"}"
+            setTextColor(Color.WHITE)
+            setPadding(6, 0, 6, 6)
+        }
+        val primaryRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        val secondaryRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        val pick = button("选曲") { onPickSong() }
         val play = button("开始") { PlaybackController.start() }
         pauseButton = button("暂停") { PlaybackController.pauseOrResume() }.apply {
             visibility = View.GONE
         }
+        val end = button("结束") { PlaybackController.stopCurrent() }
         val speed = button("1x") {
             speedIndex = (speedIndex + 1) % speeds.size
             PlaybackController.speed = speeds[speedIndex]
@@ -61,12 +73,15 @@ class OverlayController(private val context: Context) : PlaybackController.Liste
             if (positionView == null) showPositionOverlay() else finishPosition()
         }
         val exit = button("退出") {
-            PlaybackController.stop()
+            PlaybackController.stopCurrent()
             removePositionOverlay()
             removeControls()
         }
-        listOf(play, pauseButton, speed, positionButton, exit).forEach { row.addView(it) }
-        root.addView(row)
+        listOf(pick, play, pauseButton, end).forEach { primaryRow.addView(it) }
+        listOf(speed, positionButton, exit).forEach { secondaryRow.addView(it) }
+        root.addView(songLabel)
+        root.addView(primaryRow)
+        root.addView(secondaryRow)
         makeDraggable(root) { controlsParams }
 
         val params = baseParams().apply {
@@ -135,6 +150,10 @@ class OverlayController(private val context: Context) : PlaybackController.Liste
         positionButton?.text = "定位好了"
     }
 
+    fun onSongSelected(song: Song) {
+        songLabel?.text = "乐谱: ${song.name}"
+    }
+
     private fun finishPosition() {
         val params = positionParams ?: return
         val cellW = params.width / 5f
@@ -174,8 +193,19 @@ class OverlayController(private val context: Context) : PlaybackController.Liste
         pauseButton?.text = "暂停"
     }
 
+    override fun onPlaybackPaused() {
+        pauseButton?.visibility = View.VISIBLE
+        pauseButton?.text = "继续"
+    }
+
+    override fun onPlaybackResumed() {
+        pauseButton?.visibility = View.VISIBLE
+        pauseButton?.text = "暂停"
+    }
+
     override fun onPlaybackFinished() {
         pauseButton?.visibility = View.GONE
+        pauseButton?.text = "暂停"
     }
 
     private fun button(text: String, action: (View) -> Unit): Button {
