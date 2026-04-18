@@ -2,3 +2,7 @@ build/*.p12
 build/*_presign.apk
 build/*_unsigned.apk
 build/_*
+.tools/
+android/.gradle/
+android/**/build/
+android/local.properties

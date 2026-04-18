@@ -63,6 +63,28 @@
 
 注：本脚本只在autoxjs v5.7.8版本测试通过，请勿更新autoxjs（安装时勾选忽略版本后退出应用就不会再提示更新）
 
+## Kotlin 原生重写
+
+新的原生 Android 工程位于 `android/`，目标是逐步替代 AutoX/Auto.js 打包壳并支持 Android 10 以后。
+
+当前 MVP 已包含：
+
+1. 标准 Kotlin Android App 工程。
+
+2. 无障碍服务，使用 `dispatchGesture()` 派发点击手势。
+
+3. 悬浮控制条，包含开始、暂停、倍速、定位、退出。
+
+4. 默认 95% 屏幕定位层，支持拖动、缩放，并显示 3x5 琴键小区块。
+
+5. 系统文件选择器导入 SkyStudio 曲谱，支持 UTF-8 与 UTF-16 BOM。
+
+6. 版本配置从 `android/version.properties` 读取，当前为 `0.0.1`。
+
+构建方式：用 Android Studio 打开 `android/` 目录，或在命令行进入 `android/` 后执行 `./gradlew :app:assembleDebug`。需要 Android SDK Platform 36、Build Tools 36.0.0 和 JDK 17+。
+
+本地已用 Gradle Wrapper 9.4.1 和 Android Gradle Plugin 9.1.1 编译通过，APK 输出路径为 `android/app/build/outputs/apk/debug/app-debug.apk`；另已复制到 `build/自动弹琴R_native_v0.0.1-debug.apk`。
+
 ## 关于乐谱
 
 1. 乐谱文件必须是未加密的.txt文件，把乐谱文件复制到`skyMusicAuto`文件夹下就欧了
