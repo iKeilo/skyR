@@ -1,4 +1,5 @@
 # skyAoutR
+源项目：[光遇自动弹琴脚本](https://github.com/Liang2uv/sky)
 
 使用Auto.js提供的无障碍权限实现在Sky光遇中自动弹奏[SkyStudio](https://play.google.com/store/apps/details?id=com.Maple.SkyStudio) 导出的曲谱
 
