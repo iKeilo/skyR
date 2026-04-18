@@ -1,7 +1,6 @@
 var pos; // 坐标系
 var f_pos;  // 定位悬浮窗对象
 var f_btn;  // 按钮悬浮窗对象
-var f_auth; // 权限提示悬浮窗
 var f_select; // 乐谱选择
 
 var isPlay = false;  // 是否可以弹奏乐谱
@@ -30,7 +29,6 @@ var eventSub;
 var storage;  // 本地存储对象
 var storage_name = 'liang_2uv@qq.com:SKY';  // 本地存储的名字
 var storage_key = 'POSITION';  // 存储位置信息的key
-var isAuth = false;
 
 importClass(android.view.WindowManager);
 importClass(android.view.inputmethod.EditorInfo);
@@ -39,7 +37,7 @@ importClass(android.view.inputmethod.EditorInfo);
  * @method 自执行函数（主函数入口）
  */
 (function() {
-  tip('请开启【无障碍】【悬浮窗】【访问设备信息】三种权限，遇到问题请联系开发者wx:Liang2uv —— 光遇·六六', 'alert');
+  tip('请开启【无障碍】【悬浮窗】权限', 'alert');
   posInit();
   musicItems(); // 1. 获取乐谱列表
   if (!this.musicList.length) { return; }
@@ -60,7 +58,6 @@ importClass(android.view.inputmethod.EditorInfo);
   f_tbnOpen();
   f_posOpen();
   f_selectOpen();
-  f_authOpen();
   while(true) {}
 })();
 
@@ -79,8 +76,6 @@ function eventListen() {
     eventSub = events.emitter();
     eventSub.on('musicSelect', function() {
       if (!pos) { tip('请先定位按键坐标'); return; }
-      auth();
-      if (!isAuth) { return; }
       musicSelect();  // 2. 选择/读取乐谱
     });
     eventSub.on('musicParse', function() {
@@ -131,8 +126,7 @@ function eventListen() {
       f_btn.btn_play_start.setVisibility(8);
       f_btn.btn_speed.setVisibility(8);
       f_btn.btn_play_pause.setVisibility(8);
-      f_pos.setSize(playW * 1.5, playH * 1.5)
-      f_pos.setPosition(300, 120);
+      resetPosWindow();
       f_pos.board.setVisibility(0);
       f_pos.setAdjustEnabled(true);
       let parentParent = f_pos.board.parent.parent.parent;
@@ -169,58 +163,6 @@ function eventListen() {
   }
 }
 
-function f_authOpen() {
-  if (f_auth) { return; }
-  f_auth = floaty.window(
-    <frame id="board"  bg="#ffffffff">
-      <vertical padding="15 15 15 0">
-        <text paddingBottom="20" textSize="17sp" textColor="#fffc5532" text="请加我wx: Liang2uv 支付 ¥15 获取密钥" gravity="center"/>
-        <input id="pass" hint="请输入密钥" textColorHint="#ffbbbbbb" android:imeOptions="actionDone" singleLine="true" focusable="true"/>
-        <horizontal paddingTop="10" gravity="right">
-          <text id="exit" size="16sp" color="#454545">退出</text>
-          <text layout_weight="1"></text>
-          <text id="copy" size="16sp" color="#00aadd">复制key</text>
-          <text id="submit" size="16sp" color="#00aadd" marginLeft="30">验证密钥</text>
-        </horizontal>
-      </vertical>
-    </frame>
-  );
-  f_auth.setSize(device.height - 700, device.width - 100);
-  f_auth.setPosition(350, 50);
-  f_auth.pass.on("touch_down", ()=>{
-    f_auth.requestFocus();
-    f_auth.pass.requestFocus();
-  });
-  f_auth.exit.click(function() {
-    exit();
-  });
-  f_auth.copy.click(function() {
-    setClip(androidId());
-    tip('已复制到剪切板', 'alert');
-  });
-  f_auth.submit.click(function() {
-    let text = f_auth.pass.getText().toString();
-    let d = new Date();
-    if (!text) {
-      tip('请输入密钥', 'alert');
-      return;
-    }
-    if (text === md5(d.getFullYear() + '-' + (1 + d.getMonth()) + '-' + d.getDate() + androidId() + 'YT520A')) {
-      tip('验证通过');
-      isAuth = true;
-      let obj = storage.get(storage_key) || {};
-      obj.authAuto = -1;
-      storage.put(storage_key, obj);
-      f_auth.close();
-    } else {
-      tip('验证失败，请输入正确密钥', 'alert');
-    }
-  });
-  f_auth.board.setVisibility(8);
-  let parentParent = f_auth.board.parent.parent.parent;
-  setTouchable(parentParent, false);
-}
-
 function f_tbnOpen() {
   f_btn = floaty.rawWindow(
     <frame id="board">
@@ -246,7 +188,6 @@ function f_tbnOpen() {
     eventSub.emit('musicSelect');
   });
   f_btn.btn_play_pause.click(function() {
-    if (!isAuth) { return; }
     if (!musicNotes || !musicNotes.length) {
       tip('请先选择乐谱');
       return;
@@ -254,7 +195,6 @@ function f_tbnOpen() {
     eventSub.emit('pause');
   });
   f_btn.btn_speed.click(function() {
-    if (!isAuth) { return; }
     if (playing) {
       eventSub.emit('pause');
     }
@@ -388,17 +328,46 @@ function f_posOpen() {
   if (f_pos) { return; }
   f_pos = floaty.window(
     <frame id="board" gravity="center" bg="#44ffcc00">
-      <vertical w="*" h="*" gravity="center">
-        <text color="#ffffff" gravity="center" w="*">请将本区域与全部琴键区域重叠</text>
+      <vertical w="*" h="*" padding="10 10 10 10">
+        <horizontal h="0" layout_weight="1">
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+        </horizontal>
+        <horizontal h="0" layout_weight="1">
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+        </horizontal>
+        <horizontal h="0" layout_weight="1">
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+          <text h="*" layout_weight="1" margin="4" bg="#22ffffff"></text>
+        </horizontal>
       </vertical>
+      <text color="#ffffff" gravity="center" w="*" h="*">覆盖全部琴键区域</text>
     </frame>
   );
   f_pos.board.setVisibility(4);
-  f_pos.setSize(playW * 1.5, playH * 1.5);
-  f_pos.setPosition(300, 120);
+  resetPosWindow();
   f_pos.setAdjustEnabled(false);
   let parentParent = f_pos.board.parent.parent.parent;
   setTouchable(parentParent, false);
+}
+
+function resetPosWindow() {
+  let windowW = Math.round(device.height * 0.8);
+  let windowH = Math.round(device.width * 0.8);
+  let windowX = Math.round((device.height - windowW) / 2);
+  let windowY = Math.round((device.width - windowH) / 2);
+  f_pos.setSize(windowW, windowH);
+  f_pos.setPosition(windowX, windowY);
 }
 
 /**
@@ -501,28 +470,6 @@ function play() {
   });
 }
 
-function auth() {
-  try {
-    device.getAndroidId();
-  } catch (error) {
-    log('请在系统设置中开启auto.js的“访问设备信息”权限');
-  }
-  let obj = storage.get(storage_key) || {};
-  let now = Date.now();
-  if (!obj.authAuto) {
-    obj.authAuto = now + 86400000;
-    storage.put(storage_key, obj);
-  }
-  if (obj.authAuto != -1 && obj.authAuto < now) {
-    isAuth = false;
-    f_auth.board.setVisibility(0);
-    let parentParent = f_auth.board.parent.parent.parent;
-    setTouchable(parentParent, true);
-  } else {
-    isAuth = true;
-  }
-}
-
 /**
  * @method 初始化按键坐标
  * @param x 第一个按键x坐标
@@ -569,20 +516,6 @@ function divideTwoCellOnce(a, b, c, k, f, s) {
     x: x,
     y: y
   }
-}
-
-function androidId() {
-  let d = new Date();
-  try {
-    return device.getAndroidId() || ('a23187' + d.getFullYear() + (1 + d.getMonth()) + d.getDate());
-  } catch (error) {
-    return 'a23187' + d.getFullYear() + (1 + d.getMonth()) + d.getDate();
-  }
-}
-
-function md5(string) {
-  return java.math.BigInteger(1,java.security.MessageDigest.getInstance("MD5")
-  .digest(java.lang.String(string).getBytes())).toString(16);
 }
 
 function px2px(px) {

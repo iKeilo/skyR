@@ -1,0 +1,4 @@
+build/*.p12
+build/*_presign.apk
+build/*_unsigned.apk
+build/_*
