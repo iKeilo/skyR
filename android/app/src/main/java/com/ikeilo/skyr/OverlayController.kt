@@ -58,16 +58,16 @@ class OverlayController(
 
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.argb(210, 0, 0, 0))
-            setPadding(10, 10, 10, 10)
+            background = rounded(Color.argb(110, 10, 14, 15), dp(6).toFloat())
+            setPadding(dp(4), dp(4), dp(4), dp(4))
         }
         songLabel = TextView(context).apply {
             text = "乐谱: ${PlaybackController.song?.name ?: "未选择"}"
             setTextColor(Color.WHITE)
-            setPadding(6, 0, 6, 6)
+            textSize = 11f
+            maxLines = 1
+            setPadding(dp(3), 0, dp(3), dp(3))
         }
-        val primaryRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        val secondaryRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         val pick = button("选曲") { showSongPicker() }
         val play = button("开始") { PlaybackController.start() }
         pauseButton = button("暂停") { PlaybackController.pauseOrResume() }.apply {
@@ -88,11 +88,8 @@ class OverlayController(
             removeSongPicker()
             removeControls()
         }
-        listOf(pick, play, pauseButton, end).forEach { primaryRow.addView(it) }
-        listOf(speed, positionButton, exit).forEach { secondaryRow.addView(it) }
         root.addView(songLabel)
-        root.addView(primaryRow)
-        root.addView(secondaryRow)
+        listOf(pick, play, pauseButton, end, speed, positionButton, exit).forEach { root.addView(it) }
         makeDraggable(root) { controlsParams }
 
         val params = baseParams().apply {
@@ -221,10 +218,12 @@ class OverlayController(
     private fun showPositionOverlay() {
         if (positionView != null) return
         val metrics = context.resources.displayMetrics
-        val width = (metrics.widthPixels * 0.95f).roundToInt()
-        val height = (metrics.heightPixels * 0.95f).roundToInt()
-        val x = ((metrics.widthPixels - width) / 2f).roundToInt()
-        val y = ((metrics.heightPixels - height) / 2f).roundToInt()
+        val landscapeWidth = maxOf(metrics.widthPixels, metrics.heightPixels)
+        val landscapeHeight = minOf(metrics.widthPixels, metrics.heightPixels)
+        val width = (landscapeWidth * 0.92f).roundToInt()
+        val height = (landscapeHeight * 0.92f).roundToInt()
+        val x = ((landscapeWidth - width) / 2f).roundToInt()
+        val y = ((landscapeHeight - height) / 2f).roundToInt()
 
         val root = FrameLayout(context).apply {
             setBackgroundColor(Color.argb(70, 255, 204, 0))
@@ -356,15 +355,19 @@ class OverlayController(
             this.text = text
             isAllCaps = false
             setTextColor(Color.WHITE)
-            minWidth = dp(64)
-            minHeight = dp(38)
-            background = rounded(Color.argb(138, 0, 150, 136), dp(8).toFloat())
-            setPadding(dp(10), 0, dp(10), 0)
+            textSize = 12f
+            minWidth = 0
+            minHeight = 0
+            minimumWidth = 0
+            minimumHeight = 0
+            includeFontPadding = false
+            background = rounded(Color.argb(118, 0, 150, 136), dp(6).toFloat())
+            setPadding(dp(4), dp(2), dp(4), dp(2))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(38)
+                LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(dp(3), dp(3), dp(3), dp(3))
+                setMargins(dp(1), dp(1), dp(1), dp(1))
             }
             setOnClickListener(action)
         }
