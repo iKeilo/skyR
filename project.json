@@ -1,9 +1,9 @@
 {
   "assets": [],
   "build": {
-    "build_id": "SKYR-UNLOCKED-5",
-    "build_number": 5,
-    "build_time": 1776535200000
+    "build_id": "SKYR-R-0.0.1",
+    "build_number": 1,
+    "build_time": 1776536100000
   },
   "useFeatures": [],
   "icon": "res/logo.png",
@@ -17,13 +17,13 @@
     "volumeUpcontrol": false
   },
   "main": "main.js",
-  "name": "光遇弹琴脚本R",
+  "name": "自动弹琴R",
   "packageName": "com.liang2uv.skyauto",
   "scripts": {},
   "signingConfig": {
     "alias": "",
     "keystore": ""
   },
-  "versionCode": 5,
-  "versionName": "1.0.5"
+  "versionCode": 1,
+  "versionName": "0.0.1"
 }

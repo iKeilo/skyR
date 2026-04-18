@@ -362,8 +362,8 @@ function f_posOpen() {
 }
 
 function resetPosWindow() {
-  let windowW = Math.round(device.height * 0.8);
-  let windowH = Math.round(device.width * 0.8);
+  let windowW = Math.round(device.height * 0.95);
+  let windowH = Math.round(device.width * 0.95);
   let windowX = Math.round((device.height - windowW) / 2);
   let windowY = Math.round((device.width - windowH) / 2);
   f_pos.setSize(windowW, windowH);
@@ -466,6 +466,7 @@ function play() {
       }
     }
     playing = false;
+    f_btn.btn_play_pause.setVisibility(8);
     tip('弹奏完毕');
   });
 }
