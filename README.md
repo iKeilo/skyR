@@ -7,7 +7,7 @@
 
 ## 国内下载地址
 --------
-[蓝奏云](https://wwbhn.lanzout.com/iNT4p3nlfx6h)
+## [蓝奏云](https://wwbhn.lanzout.com/iNT4p3nlfx6h)
 
 ## 更新日志
 
