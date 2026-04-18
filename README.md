@@ -3,7 +3,7 @@
 
 使用Auto.js提供的无障碍权限实现在Sky光遇中自动弹奏[SkyStudio](https://play.google.com/store/apps/details?id=com.Maple.SkyStudio) 导出的曲谱
 
-## 变强之路 `练琴脚本`，比自动弹更好玩，来试试吧，[指路→](https://github.com/Liang2uv/sky_practice)
+### 变强之路 `练琴脚本`，比自动弹更好玩，来试试吧，[指路→](https://github.com/Liang2uv/sky_practice)
 
 ## 国内下载地址
 --------
