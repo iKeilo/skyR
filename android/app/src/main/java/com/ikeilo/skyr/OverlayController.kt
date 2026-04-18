@@ -4,33 +4,43 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PointF
+import android.graphics.drawable.GradientDrawable
+import android.text.Editable
+import android.text.TextWatcher
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import java.util.Locale
 import kotlin.math.roundToInt
 
 @SuppressLint("SetTextI18n")
 class OverlayController(
     private val context: Context,
-    private val onPickSong: () -> Unit
+    private val onSongChanged: () -> Unit,
+    private val onPickExternalSong: () -> Unit
 ) : PlaybackController.Listener {
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val positionStore = PositionStore(context)
     private var controls: View? = null
     private var positionView: View? = null
+    private var songPickerView: View? = null
     private var controlsParams: WindowManager.LayoutParams? = null
     private var positionParams: WindowManager.LayoutParams? = null
+    private var songPickerParams: WindowManager.LayoutParams? = null
     private var pauseButton: Button? = null
     private var positionButton: Button? = null
     private var songLabel: TextView? = null
+    private val bundledSongs: List<String> by lazy { loadBundledSongs() }
     private val speeds = listOf(0.4, 0.6, 0.8, 1.0, 1.5, 2.0)
     private var speedIndex = 3
 
@@ -58,7 +68,7 @@ class OverlayController(
         }
         val primaryRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         val secondaryRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        val pick = button("选曲") { onPickSong() }
+        val pick = button("选曲") { showSongPicker() }
         val play = button("开始") { PlaybackController.start() }
         pauseButton = button("暂停") { PlaybackController.pauseOrResume() }.apply {
             visibility = View.GONE
@@ -75,6 +85,7 @@ class OverlayController(
         val exit = button("退出") {
             PlaybackController.stopCurrent()
             removePositionOverlay()
+            removeSongPicker()
             removeControls()
         }
         listOf(pick, play, pauseButton, end).forEach { primaryRow.addView(it) }
@@ -93,6 +104,118 @@ class OverlayController(
         controlsParams = params
         windowManager.addView(root, params)
         controls = root
+    }
+
+    private fun showSongPicker() {
+        if (!Settings.canDrawOverlays(context)) {
+            Toast.makeText(context, "请先授予悬浮窗权限", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (songPickerView != null) return
+
+        val metrics = context.resources.displayMetrics
+        val width = (metrics.widthPixels * 0.86f).roundToInt()
+        val height = (metrics.heightPixels * 0.66f).roundToInt()
+        val x = ((metrics.widthPixels - width) / 2f).roundToInt()
+        val y = (metrics.heightPixels * 0.12f).roundToInt()
+
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(Color.argb(226, 18, 27, 28), dp(10).toFloat())
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            elevation = dp(8).toFloat()
+        }
+        val titleBar = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val title = TextView(context).apply {
+            text = "选择乐谱"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val importButton = button("导入") {
+            removeSongPicker()
+            onPickExternalSong()
+        }
+        val closeButton = button("×") { removeSongPicker() }.apply {
+            minWidth = dp(44)
+        }
+        titleBar.addView(title, LinearLayout.LayoutParams(0, dp(42), 1f))
+        titleBar.addView(importButton)
+        titleBar.addView(closeButton)
+
+        val search = EditText(context).apply {
+            hint = "搜索乐谱"
+            setSingleLine(true)
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.argb(170, 255, 255, 255))
+            background = rounded(Color.argb(88, 255, 255, 255), dp(8).toFloat())
+            setPadding(dp(12), 0, dp(12), 0)
+        }
+        val countLabel = TextView(context).apply {
+            setTextColor(Color.argb(210, 255, 255, 255))
+            textSize = 12f
+            setPadding(dp(4), dp(6), dp(4), dp(4))
+        }
+        val list = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        val scroll = ScrollView(context).apply {
+            isFillViewport = false
+            addView(list)
+        }
+
+        fun render(keyword: String) {
+            val normalized = keyword.trim().lowercase(Locale.getDefault())
+            val songs = if (normalized.isEmpty()) {
+                bundledSongs
+            } else {
+                bundledSongs.filter {
+                    it.removeSuffix(".txt").lowercase(Locale.getDefault()).contains(normalized)
+                }
+            }
+            countLabel.text = "共 ${songs.size} 首"
+            list.removeAllViews()
+            if (songs.isEmpty()) {
+                list.addView(songRow("没有找到匹配乐谱", enabled = false))
+                return
+            }
+            songs.forEachIndexed { index, assetName ->
+                list.addView(songRow(assetName.removeSuffix(".txt"), enabled = true, index = index) {
+                    selectBundledSong(assetName)
+                })
+            }
+        }
+
+        search.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                render(s?.toString().orEmpty())
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+
+        root.addView(titleBar)
+        root.addView(search, LinearLayout.LayoutParams(-1, dp(42)).apply {
+            setMargins(0, dp(4), 0, 0)
+        })
+        root.addView(countLabel)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        makeDraggable(titleBar) { songPickerParams }
+        render("")
+
+        val params = baseParams(focusable = true).apply {
+            this.width = width
+            this.height = height
+            this.x = x
+            this.y = y
+        }
+        songPickerParams = params
+        windowManager.addView(root, params)
+        songPickerView = root
     }
 
     private fun showPositionOverlay() {
@@ -154,6 +277,20 @@ class OverlayController(
         songLabel?.text = "乐谱: ${song.name}"
     }
 
+    private fun selectBundledSong(assetName: String) {
+        try {
+            val bytes = context.assets.open("music/$assetName").use { it.readBytes() }
+            val song = MusicParser.parse(assetName, MusicParser.decode(bytes))
+            PlaybackController.song = song
+            onSongSelected(song)
+            onSongChanged()
+            removeSongPicker()
+            Toast.makeText(context, "已读取乐谱: ${song.name}", Toast.LENGTH_SHORT).show()
+        } catch (error: Exception) {
+            Toast.makeText(context, error.message ?: "读取乐谱失败", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun finishPosition() {
         val params = positionParams ?: return
         val cellW = params.width / 5f
@@ -176,6 +313,12 @@ class OverlayController(
         positionView = null
         positionParams = null
         positionButton?.text = "定位"
+    }
+
+    private fun removeSongPicker() {
+        songPickerView?.let { windowManager.removeView(it) }
+        songPickerView = null
+        songPickerParams = null
     }
 
     private fun removeControls() {
@@ -211,20 +354,72 @@ class OverlayController(
     private fun button(text: String, action: (View) -> Unit): Button {
         return Button(context).apply {
             this.text = text
+            isAllCaps = false
+            setTextColor(Color.WHITE)
             minWidth = dp(64)
+            minHeight = dp(38)
+            background = rounded(Color.argb(138, 0, 150, 136), dp(8).toFloat())
+            setPadding(dp(10), 0, dp(10), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(38)
+            ).apply {
+                setMargins(dp(3), dp(3), dp(3), dp(3))
+            }
             setOnClickListener(action)
         }
     }
 
-    private fun baseParams(): WindowManager.LayoutParams {
+    private fun songRow(
+        text: String,
+        enabled: Boolean,
+        index: Int = 0,
+        action: (() -> Unit)? = null
+    ): TextView {
+        return TextView(context).apply {
+            this.text = text
+            textSize = 15f
+            setTextColor(if (enabled) Color.WHITE else Color.argb(170, 255, 255, 255))
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), 0, dp(12), 0)
+            background = rounded(
+                if (index % 2 == 0) Color.argb(54, 255, 255, 255) else Color.argb(34, 255, 255, 255),
+                dp(7).toFloat()
+            )
+            layoutParams = LinearLayout.LayoutParams(-1, dp(42)).apply {
+                setMargins(0, dp(3), 0, dp(3))
+            }
+            if (enabled && action != null) {
+                setOnClickListener { action() }
+            }
+        }
+    }
+
+    private fun baseParams(focusable: Boolean = false): WindowManager.LayoutParams {
+        val flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            (if (focusable) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
         return WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            flags,
             android.graphics.PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
+        }
+    }
+
+    private fun loadBundledSongs(): List<String> {
+        return context.assets.list("music")
+            ?.filter { it.endsWith(".txt", ignoreCase = true) }
+            ?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
+            .orEmpty()
+    }
+
+    private fun rounded(color: Int, radius: Float): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = radius
         }
     }
 

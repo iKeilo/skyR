@@ -11,6 +11,8 @@
 
 ## 更新日志
 
+- 2026/04/19 原生版 0.0.3：选曲改为悬浮曲库窗口，参考 AutoX 版加入搜索列表；悬浮按钮调整为半透明样式
+
 - 2026/04/19 原生版 0.0.2：悬浮窗新增选曲和结束按钮；暂停后按钮显示“继续”；暂停状态点击“开始”会从头重新演奏当前乐谱
 
 - 2026/04/19 版本号从 0.0.1 开始，应用名称改为“自动弹琴R”，默认定位窗口调整为屏幕 95%，演奏结束后隐藏暂停按钮
@@ -81,11 +83,11 @@
 
 5. 系统文件选择器导入 SkyStudio 曲谱，支持 UTF-8 与 UTF-16 BOM。
 
-6. 版本配置从 `android/version.properties` 读取，当前为 `0.0.2`。
+6. 版本配置从 `android/version.properties` 读取，当前为 `0.0.3`。
 
 构建方式：用 Android Studio 打开 `android/` 目录，或在命令行进入 `android/` 后执行 `./gradlew :app:assembleDebug`。需要 Android SDK Platform 36、Build Tools 36.0.0 和 JDK 17+。
 
-本地已用 Gradle Wrapper 9.4.1 和 Android Gradle Plugin 9.1.1 编译通过，APK 输出路径为 `android/app/build/outputs/apk/debug/app-debug.apk`；另已复制到 `build/自动弹琴R_native_v0.0.2-debug.apk`。
+本地已用 Gradle Wrapper 9.4.1 和 Android Gradle Plugin 9.1.1 编译通过，APK 输出路径为 `android/app/build/outputs/apk/debug/app-debug.apk`；另已复制到 `build/自动弹琴R_native_v0.0.3-debug.apk`。
 
 ## 关于乐谱
 

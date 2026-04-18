@@ -20,7 +20,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        overlayController = OverlayController(this, ::pickSong)
+        overlayController = OverlayController(this, ::updateStatus, ::pickSong)
         setContentView(createContent())
         updateStatus()
     }
